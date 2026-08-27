@@ -785,8 +785,8 @@ function(Snapmaker_Orca_copy_dlls target config postfix output_dlls)
         DESTINATION ${_out_dir})
 
     # Copy Sentry and Crashpad artifacts if they were built by deps
-    if (SLIC3R_SENTRY AND EXISTS "${CMAKE_PREFIX_PATH}/bin/sentry.dll")
-        file(COPY "${CMAKE_PREFIX_PATH}/bin/sentry.dll"
+    if (SLIC3R_SENTRY AND EXISTS "${CMAKE_PREFIX_PATH}/bin/sentry${postfix}.dll")
+        file(COPY "${CMAKE_PREFIX_PATH}/bin/sentry${postfix}.dll"
                   "${CMAKE_PREFIX_PATH}/bin/crashpad_handler.exe"
             DESTINATION ${_out_dir}
         )
@@ -818,7 +818,7 @@ function(Snapmaker_Orca_copy_dlls target config postfix output_dlls)
             ${CMAKE_PREFIX_PATH}/bin/occt/TKXCAF.dll
             ${CMAKE_PREFIX_PATH}/bin/occt/TKXDESTEP.dll
             ${CMAKE_PREFIX_PATH}/bin/occt/TKXSBase.dll
-            ${CMAKE_PREFIX_PATH}/bin/freetype.dll
+            ${CMAKE_PREFIX_PATH}/bin/freetype${postfix}.dll
          DESTINATION ${_out_dir})
 
     # Build the DLL list in a local variable first
@@ -854,13 +854,13 @@ function(Snapmaker_Orca_copy_dlls target config postfix output_dlls)
         ${_out_dir}/TKXDESTEP.dll
         ${_out_dir}/TKXSBase.dll
 
-        ${_out_dir}/freetype.dll
+        ${_out_dir}/freetype${postfix}.dll
     )
 
     # Add Sentry DLLs to the list if Sentry is enabled
     if (SLIC3R_SENTRY)
         list(APPEND _dll_list
-            ${_out_dir}/sentry.dll
+            ${_out_dir}/sentry${postfix}.dll
             ${_out_dir}/crashpad_handler.exe
         )
     endif()

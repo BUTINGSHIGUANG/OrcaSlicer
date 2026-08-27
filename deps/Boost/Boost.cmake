@@ -22,4 +22,8 @@ Snapmaker_Orca_add_cmake_project(Boost
         "${_context_arch_line}"
 )
 
+if (MSVC)
+    add_debug_dep(dep_Boost)
+endif ()
+
 set(DEP_Boost_DEPENDS ZLIB)

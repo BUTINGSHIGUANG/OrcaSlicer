@@ -878,7 +878,7 @@ public:
         bool operator()(const std::pair<void*, std::weak_ptr<SSWCP_Instance>>& lhs,
                         const std::pair<void*, std::weak_ptr<SSWCP_Instance>>& rhs) const
         {
-            return lhs.first <= rhs.first;
+            return lhs.first < rhs.first;
         }
     };
     std::map<std::pair<void*, std::weak_ptr<SSWCP_Instance>>, std::string, CachePairCompare>                     m_cache_subscribers;
