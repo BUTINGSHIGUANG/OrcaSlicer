@@ -675,7 +675,7 @@ public:
     void log_model_import_from_lab() const;
     void log_slice_start() const;
     void log_slice_success(long long duration_ms) const;
-    void log_print_start() const;
+    void log_print_start(const std::string& msg = "") const;
     void update_print_error_info(int code, std::string msg, std::string extra);
     void notify_vhl_dithering_conflict(bool local_z_enabled);
     bool has_incompatible_mixed_filament_in_use() const;

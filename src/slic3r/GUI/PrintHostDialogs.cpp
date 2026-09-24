@@ -25,6 +25,7 @@
 #include "MsgDialog.hpp"
 #include "I18N.hpp"
 #include "MainFrame.hpp"
+#include "Plater.hpp"
 #include "libslic3r/AppConfig.hpp"
 #include "NotificationManager.hpp"
 #include "ExtraRenderers.hpp"
@@ -153,6 +154,8 @@ void PrintHostSendDialog::init()
 
     auto* btn_ok = add_button(wxID_OK, true, _L("Upload"));
     btn_ok->Bind(wxEVT_BUTTON, [this, validate_path](wxCommandEvent&) {
+        if (Plater* plater = wxGetApp().plater())
+            plater->log_print_start("click upload");
         sentryReportLog(SENTRY_LOG_TRACE, BP_UPLOAD, BP_UPLOAD);
         if (validate_path(txt_filename->GetValue())) {
             post_upload_action = PrintHostPostUploadAction::None;
@@ -174,6 +177,8 @@ void PrintHostSendDialog::init()
     if (post_actions.has(PrintHostPostUploadAction::StartPrint)) {
         auto* btn_print = add_button(wxID_YES, false, _L("Upload and Print"));
         btn_print->Bind(wxEVT_BUTTON, [this, validate_path](wxCommandEvent&) {
+            if (Plater* plater = wxGetApp().plater())
+                plater->log_print_start("click upload and print");
             sentryReportLog(SENTRY_LOG_TRACE, BP_UPLOAD_AND_PRINT, BP_UPLOAD_AND_PRINT);
             if (validate_path(txt_filename->GetValue())) {
                 post_upload_action = PrintHostPostUploadAction::StartPrint;

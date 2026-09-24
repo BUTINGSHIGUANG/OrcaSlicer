@@ -15633,7 +15633,6 @@ void Plater::priv::on_action_print_plate(SimpleEvent&)
 {
     if (q != nullptr) {
         BOOST_LOG_TRIVIAL(debug) << __FUNCTION__ << ":received print plate event\n" ;
-        q->log_print_start();
     }
 
     PresetBundle& preset_bundle = *wxGetApp().preset_bundle;
@@ -15737,7 +15736,6 @@ void Plater::priv::on_action_print_all(SimpleEvent&)
 {
     if (q != nullptr) {
         BOOST_LOG_TRIVIAL(debug) << __FUNCTION__ << ":received print all event\n" ;
-        q->log_print_start();
     }
 
     PresetBundle& preset_bundle = *wxGetApp().preset_bundle;
@@ -23334,7 +23332,7 @@ void Plater::log_slice_success(long long duration_ms) const
         {"duration_ms", std::to_string(duration_ms)});
 }
 
-void Plater::log_print_start() const
+void Plater::log_print_start(const std::string& msg) const
 {
     if (p->model.space_info.empty())
         return;
@@ -23344,7 +23342,7 @@ void Plater::log_print_start() const
     if (plate != nullptr)
         result = plate->get_slice_result();
 
-    SNAP_LOG_BATCH(Info, "print start",
+    SNAP_LOG_BATCH(Info, msg.empty() ? "print start" : msg,
         {"source", "cpp"},
         {"eventName", "orca_print_start"},
         {"project_id", project_id_from(p->model)},
