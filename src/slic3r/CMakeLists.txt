@@ -581,6 +581,7 @@ set(SLIC3R_GUI_SOURCES
     Utils/CpuMemory.hpp
     Utils/CalibUtils.cpp
     Utils/CalibUtils.hpp
+    Utils/SnapTelemetry.hpp
     Utils/ColorSpaceConvert.cpp
     Utils/ColorSpaceConvert.hpp
     Utils/CrealityPrint.cpp

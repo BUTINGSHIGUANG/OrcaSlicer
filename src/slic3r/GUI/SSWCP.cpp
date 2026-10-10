@@ -588,26 +588,6 @@ void SSWCP_Instance::sw_SnapLog()
         }
     }
 
-    using namespace Slic3r::SnapLog::v1;
-    SnapLogExt ext;
-    if (m_param_data.count("ext") && m_param_data["ext"].is_object()) {
-        for (auto it = m_param_data["ext"].begin(); it != m_param_data["ext"].end(); ++it) {
-            ext.emplace_back(it.key(), it.value().is_string() ? it.value().get<std::string>() : it.value().dump());
-        }
-    }
-    ext.emplace_back("source", "flutter");
-
-    std::string policy_str = m_param_data.count("policy")
-        ? m_param_data["policy"].get<std::string>() : "realtime";
-
-    SnapLogLevel lvl = (level_str == "ERROR" || level_str == "error") ? SnapLogLevel::Error
-                    : (level_str == "WARN"  || level_str == "warning") ? SnapLogLevel::Warning
-                    : SnapLogLevel::Info;
-    SnapLogPolicy pol = (policy_str == "batched" || policy_str == "batch")
-        ? SnapLogPolicy::Buffered : SnapLogPolicy::Realtime;
-
-    SnapLogClient::instance().log(lvl, message, std::move(ext), pol, "flutter", 0);
-
     send_to_js();
     finish_job();
 }
@@ -1911,10 +1891,6 @@ void SSWCP_MachineFind_Instance::sw_WakeupFind()
 void SSWCP_MachineFind_Instance::sw_StartMachineFind()
 {
     try {
-        SNAP_LOG_BATCH(Info, "device discovery start",
-            {"eventName", "device_discovery_start"},
-            {"source", "cpp"});
-
         std::vector<string> protocols;
 
         float last_time = -1;
@@ -6843,17 +6819,11 @@ void SSWCP_MqttAgent_Instance::sw_create_mqtt_client()
         if (m_param_data.count("server_address") || !m_param_data["server_address"].is_string()) {
             server_address = m_param_data["server_address"].get<std::string>();
             if (server_address == "") {
-                SNAP_LOG_BATCH(Error, "mqtt client create failed",
-                    {"eventName", "mqtt_client_create_failed"}, {"source", "cpp"},
-                    {"connectSessionId", session_id}, {"reason", "server_address illegal"});
                 handle_general_fail(-1, "the value of param [server_address] is illegal");
                 return;
             }
         }
         else {
-            SNAP_LOG_BATCH(Error, "mqtt client create failed",
-                {"eventName", "mqtt_client_create_failed"}, {"source", "cpp"},
-                {"connectSessionId", session_id}, {"reason", "server_address missing"});
             handle_general_fail(-1, "param [server_address] is required or wrong type");
             return;
         }
@@ -6861,16 +6831,10 @@ void SSWCP_MqttAgent_Instance::sw_create_mqtt_client()
         if (m_param_data.count("clientId") || !m_param_data["clientId"].is_string()) {
             clientId = m_param_data["clientId"].get<std::string>();
             if (clientId == "") {
-                SNAP_LOG_BATCH(Error, "mqtt client create failed",
-                    {"eventName", "mqtt_client_create_failed"}, {"source", "cpp"},
-                    {"connectSessionId", session_id}, {"reason", "clientId illegal"});
                 handle_general_fail(-1, "the value of param [clientId] is illegal");
                 return;
             }
         } else {
-            SNAP_LOG_BATCH(Error, "mqtt client create failed",
-                {"eventName", "mqtt_client_create_failed"}, {"source", "cpp"},
-                {"connectSessionId", session_id}, {"reason", "clientId missing"});
             handle_general_fail(-1, "param [clientId] is required or wroing type");
             return;
         }
@@ -6900,10 +6864,6 @@ void SSWCP_MqttAgent_Instance::sw_create_mqtt_client()
         }
 
         if (client == nullptr) {
-            // Report client creation failure before returning.
-            SNAP_LOG_BATCH(Error, "mqtt client create failed",
-                {"eventName", "mqtt_client_create_failed"}, {"source", "cpp"},
-                {"connectSessionId", session_id}, {"reason", "create instance failed"});
             handle_general_fail(-1, "create instance failed");
             return;
         }
@@ -6918,9 +6878,6 @@ void SSWCP_MqttAgent_Instance::sw_create_mqtt_client()
         //
         bool flag = set_current_engine({std::to_string(int64_t(client.get())), client});
         if (!flag) {
-            SNAP_LOG_BATCH(Error, "mqtt client create failed",
-                {"eventName", "mqtt_client_create_failed"}, {"source", "cpp"},
-                {"connectSessionId", session_id}, {"reason", "set_current_engine failed"});
             handle_general_fail(-1, "create failed");
             return;
         }
@@ -6929,12 +6886,6 @@ void SSWCP_MqttAgent_Instance::sw_create_mqtt_client()
 
         m_res_data["type"] = type;
         m_res_data["id"]   = std::to_string(int64_t(get_current_engine().get()));
-
-        SNAP_LOG_BATCH(Info, "mqtt client created",
-            {"eventName", "mqtt_client_create"}, {"source", "cpp"},
-            {"connectSessionId", session_id},
-            {"transport", type}, {"useTls", type == "mqtts" ? "true" : "false"},
-            {"server", server_address});
 
         send_to_js();
         finish_job();
@@ -6947,9 +6898,6 @@ void SSWCP_MqttAgent_Instance::sw_create_mqtt_client()
 void SSWCP_MqttAgent_Instance::sw_mqtt_connect()
 {
     try {
-        SNAP_LOG_BATCH(Info, "mqtt connect attempt",
-            {"eventName", "mqtt_connect_attempt"}, {"source", "cpp"},
-            {"connectSessionId", get_connect_session_id()});
         if (!m_param_data.count("id") || !m_param_data["id"].is_string()) {
             handle_general_fail(-1, "param [id] is required or wrong type");
 
@@ -6979,9 +6927,6 @@ void SSWCP_MqttAgent_Instance::sw_mqtt_connect()
             const std::string session_id = self ? self->get_connect_session_id() : std::string{};
 
             engine->SetConnectionFailureCallback([engine, session_id]() {
-                SNAP_LOG_BATCH(Error, "mqtt connection failure callback",
-                    {"eventName", "mqtt_connect_failure"}, {"source", "cpp"},
-                    {"connectSessionId", session_id});
                 std::string msg = "";
                 engine->Disconnect(msg);
             });
@@ -6993,17 +6938,10 @@ void SSWCP_MqttAgent_Instance::sw_mqtt_connect()
                 auto self = weak_ptr.lock();
                 if (self) {
                     if (flag) {
-                        SNAP_LOG_BATCH(Info, "mqtt connect result",
-                            {"eventName", "mqtt_connect_result"}, {"source", "cpp"},
-                            {"connectSessionId", session_id}, {"success", "true"});
                         self->m_msg = msg;
                         self->send_to_js();
                         self->finish_job();
                     } else {
-                        SNAP_LOG_BATCH(Error, "mqtt connect result",
-                            {"eventName", "mqtt_connect_result"}, {"source", "cpp"},
-                            {"connectSessionId", session_id}, {"success", "false"},
-                            {"reason", msg});
                         self->handle_general_fail(-1, msg);
                     }
                 }
@@ -7056,9 +6994,6 @@ void SSWCP_MqttAgent_Instance::sw_mqtt_disconnect()
                 auto self = weak_ptr.lock();
                 if (self) {
                     if (flag) {
-                        SNAP_LOG_BATCH(Info, "device disconnect",
-                            {"eventName", "device_disconnect"}, {"source", "cpp"},
-                            {"connectSessionId", session_id});
                         // Printer disconnected — clear Flutter MQTT identity in SnapLog.
                         ::Slic3r::SnapLog::v1::SnapLogClient::instance().set_connect_clientid("");
                         ::Slic3r::SnapLog::v1::SnapLogClient::instance().set_print_sn("");
@@ -7140,10 +7075,6 @@ void SSWCP_MqttAgent_Instance::sw_mqtt_subscribe()
                 auto self = weak_ptr.lock();
                 if (self) {
                     if (flag) {
-                        SNAP_LOG_BATCH(Info, "mqtt subscribe result",
-                            {"eventName", "mqtt_subscribe_result"}, {"source", "cpp"},
-                            {"connectSessionId", session_id}, {"success", "true"},
-                            {"topic", topic}, {"qos", std::to_string(qos)});
                         // response set event_id
                         if (self->m_event_id != "") {
                             self->m_msg = msg;
@@ -7157,11 +7088,6 @@ void SSWCP_MqttAgent_Instance::sw_mqtt_subscribe()
                         }
 
                     } else {
-                        SNAP_LOG_BATCH(Warning, "mqtt subscribe result",
-                            {"eventName", "mqtt_subscribe_result"}, {"source", "cpp"},
-                            {"connectSessionId", session_id}, {"success", "false"},
-                            {"topic", topic}, {"qos", std::to_string(qos)},
-                            {"reason", msg});
                         self->handle_general_fail(-1, msg);
                     }
                 }
@@ -7385,13 +7311,6 @@ void SSWCP_MqttAgent_Instance::sw_mqtt_set_engine()
 
                     std::string link_mode       = m_param_data.count("link_mode") ? m_param_data["link_mode"] : "lan";
                     connect_params["link_mode"] = link_mode;
-
-                    SNAP_LOG_BATCH(Info, "device engine set",
-                        {"eventName", "device_engine_set"}, {"source", "cpp"},
-                        {"connectSessionId", get_connect_session_id()},
-                        {"printerSN", host->m_sn},
-                        {"clientId", host->m_client_id},
-                        {"linkMode", link_mode});
 
                     std::string id     = m_param_data.count("id") ? m_param_data["id"].get<std::string>() : "";
                     std::string userid = m_param_data.count("userid") ? m_param_data["userid"].get<std::string>() : "";
