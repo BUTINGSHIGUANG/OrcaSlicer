@@ -19,6 +19,10 @@ inline namespace v1 {
     X(FirmwareUpgradeResult, "firmware_upgrade_result")                                                                                             \
     X(FlutterRunResult, "flutter_run_result")                                                                                                       \
     X(GcodeExportResult, "gcode_export_result")                                                                                                     \
+    X(LabModelImport, "orca_model_import_from_lab")                                                                                                 \
+    X(LabPrintStart, "orca_print_start")                                                                                                            \
+    X(LabSliceStart, "orca_slice_start")                                                                                                            \
+    X(LabSliceSuccess, "orca_slice_success")                                                                                                        \
     X(MqttClientCreate, "mqtt_client_create")                                                                                                       \
     X(MqttClientCreateFailed, "mqtt_client_create_failed")                                                                                           \
     X(MqttConnectAttempt, "mqtt_connect_attempt")                                                                                                   \
