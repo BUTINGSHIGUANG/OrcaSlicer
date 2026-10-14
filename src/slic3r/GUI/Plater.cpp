@@ -225,7 +225,8 @@ static std::string telemetry_printer_model();
 static size_t     telemetry_filament_count();
 
 // Lab funnel guard: defined near the other Lab analytics helpers at the bottom of this file.
-// True only for models whose 3mf space_info extendInfo.source starts with "lab_".
+// True only for models whose 3mf space_info extendInfo.source starts with "lab_" AND whose
+// project_id / export_id are both present and non-empty.
 static bool is_lab_model(const Slic3r::Model& model);
 
 static unsigned telemetry_result_sinks(bool success)
@@ -23494,7 +23495,13 @@ std::string lab_estimated_print_time(const GCodeProcessorResult* result)
 // near the top, so load_files() can call it before this point.
 bool is_lab_model(const Model& model)
 {
-    return boost::algorithm::starts_with(lab_extend_info_value(model, "source"), "lab_");
+    // A model counts as a Lab model only when all of the following hold in its
+    // Metadata/space_info.json: extendInfo.source starts with "lab_", and both
+    // project_id and export_id are present and non-empty (they are the keys the
+    // funnel events rely on for correlation).
+    if (!boost::algorithm::starts_with(lab_extend_info_value(model, "source"), "lab_"))
+        return false;
+    return !model.space_info.project_id.empty() && !model.space_info.export_id.empty();
 }
 
 void Plater::log_model_import_from_lab() const
