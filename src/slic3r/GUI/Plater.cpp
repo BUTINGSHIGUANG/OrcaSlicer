@@ -224,6 +224,10 @@ static void report_file_import_result(const std::vector<fs::path>& input_files, 
 static std::string telemetry_printer_model();
 static size_t     telemetry_filament_count();
 
+// Lab funnel guard: defined near the other Lab analytics helpers at the bottom of this file.
+// True only for models whose 3mf space_info extendInfo.source starts with "lab_".
+static bool is_lab_model(const Slic3r::Model& model);
+
 static unsigned telemetry_result_sinks(bool success)
 {
     return success ? SnapLog::v1::SinkPostHog : (SnapLog::v1::SinkGateway | SnapLog::v1::SinkPostHog);
@@ -12116,6 +12120,13 @@ std::vector<size_t> Plater::priv::load_files(const std::vector<fs::path>& input_
                         this->model.plates_custom_gcodes = model.plates_custom_gcodes;
                         this->model.design_info = model.design_info;
                         this->model.model_info = model.model_info;
+                        // space info (project_id / export_id / extendInfo) carried by the project for Lab funnel reporting
+                        this->model.space_info = model.space_info;
+                        // Lab funnel: the model is fully imported now, so its 3mf metadata is
+                        // available — report the import event for Lab models (extendInfo.source
+                        // starts with "lab_"; is_lab_model() checks it inside the logger).
+                        if (is_lab_model(this->model))
+                            q->log_model_import_from_lab();
                     }
                 }
 
@@ -13289,6 +13300,8 @@ void Plater::priv::reset(bool apply_presets_change)
     //BBS
     model.calib_pa_pattern.reset();
     model.plates_custom_gcodes.clear();
+    // space info belongs to the closed project; clear it so its ids never leak into the next one
+    model.space_info.clear();
 
     // BBS
     m_saved_timestamp = m_backup_timestamp = size_t(-1);
@@ -23407,11 +23420,11 @@ void Plater::set_project_filename(const wxString& filename)
 
 // --- Snapmaker Lab funnel analytics (PostHog) ----------------------------------
 //
-// Lab models are generated on Snapmaker Lab and downloaded through the
-// snapmaker-orca:// scheme. Their 3mf carries Metadata/space_info.json with
-// project_id / export_id / extendInfo.source so the whole funnel
-// (import -> slice start -> slice success -> print start) can be correlated
-// on the PostHog side. Events fire only when that file is present.
+// Lab models are generated on Snapmaker Lab and saved as 3mf whose
+// Metadata/space_info.json carries project_id / export_id / extendInfo.source.
+// A model counts as a Lab model only when extendInfo.source starts with
+// "lab_", so the whole funnel (import -> slice start -> slice success ->
+// print start) can be correlated on the PostHog side.
 
 namespace {
 using Slic3r::SnapLog::v1::SinkPostHog;    // SNAP_LOG_* macro arguments resolve at the call site
@@ -23428,7 +23441,7 @@ std::string lab_extend_info_value(const Model& model, const char* key)
         if (j.is_object() && j.contains(key) && j[key].is_string())
             return j[key].get<std::string>();
     } catch (const nlohmann::json::exception&) {
-        // malformed extendInfo — report without the field
+        // malformed extendInfo — treat as no Lab info
     }
     return {};
 }
@@ -23476,9 +23489,17 @@ std::string lab_estimated_print_time(const GCodeProcessorResult* result)
 }
 } // namespace
 
+// True only when the model comes from a Lab generator (extendInfo.source starts with "lab_").
+// Defined here (outside the anonymous namespace) to match the file-scope forward declaration
+// near the top, so load_files() can call it before this point.
+bool is_lab_model(const Model& model)
+{
+    return boost::algorithm::starts_with(lab_extend_info_value(model, "source"), "lab_");
+}
+
 void Plater::log_model_import_from_lab() const
 {
-    if (p->model.space_info.empty())
+    if (!is_lab_model(p->model))
         return;
 
     SNAP_LOG_INFO(SinkPostHog, SnapEvent::LabModelImport,
@@ -23493,7 +23514,7 @@ void Plater::log_model_import_from_lab() const
 
 void Plater::log_slice_start_from_lab() const
 {
-    if (p->model.space_info.empty())
+    if (!is_lab_model(p->model))
         return;
 
     SNAP_LOG_INFO(SinkPostHog, SnapEvent::LabSliceStart,
@@ -23506,7 +23527,7 @@ void Plater::log_slice_start_from_lab() const
 
 void Plater::log_slice_success_from_lab(long long duration_ms) const
 {
-    if (p->model.space_info.empty())
+    if (!is_lab_model(p->model))
         return;
 
     SNAP_LOG_INFO(SinkPostHog, SnapEvent::LabSliceSuccess,
@@ -23520,7 +23541,7 @@ void Plater::log_slice_success_from_lab(long long duration_ms) const
 
 void Plater::log_print_start_from_lab() const
 {
-    if (p->model.space_info.empty())
+    if (!is_lab_model(p->model))
         return;
 
     const GCodeProcessorResult* result = nullptr;
