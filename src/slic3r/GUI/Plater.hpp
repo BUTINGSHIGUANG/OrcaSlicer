@@ -673,11 +673,11 @@ public:
     wxString get_export_gcode_filename(const wxString& extension = wxEmptyString, bool only_filename = false, bool export_all = false) const;
     void set_project_filename(const wxString& filename);
     // Snapmaker Lab funnel analytics (PostHog). Reported only for models whose 3mf
-    // space_info extendInfo.source starts with "lab_" (i.e. generated on Snapmaker Lab).
+    // space_info extendInfo.source starts with "lab_" with non-empty project_id and
+    // export_id (i.e. generated on Snapmaker Lab).
     void log_model_import_from_lab() const;
     void log_slice_start_from_lab() const;
     void log_slice_success_from_lab(long long duration_ms) const;
-    void log_print_start_from_lab() const;
     void update_print_error_info(int code, std::string msg, std::string extra);
     void notify_vhl_dithering_conflict(bool local_z_enabled);
     bool has_incompatible_mixed_filament_in_use() const;

@@ -15816,7 +15816,6 @@ void Plater::priv::on_action_print_plate(SimpleEvent&)
 {
     if (q != nullptr) {
         BOOST_LOG_TRIVIAL(debug) << __FUNCTION__ << ":received print plate event\n" ;
-        q->log_print_start_from_lab();
     }
 
     PresetBundle& preset_bundle = *wxGetApp().preset_bundle;
@@ -15920,7 +15919,6 @@ void Plater::priv::on_action_print_all(SimpleEvent&)
 {
     if (q != nullptr) {
         BOOST_LOG_TRIVIAL(debug) << __FUNCTION__ << ":received print all event\n" ;
-        q->log_print_start_from_lab();
     }
 
     PresetBundle& preset_bundle = *wxGetApp().preset_bundle;
@@ -23424,8 +23422,9 @@ void Plater::set_project_filename(const wxString& filename)
 // Lab models are generated on Snapmaker Lab and saved as 3mf whose
 // Metadata/space_info.json carries project_id / export_id / extendInfo.source.
 // A model counts as a Lab model only when extendInfo.source starts with
-// "lab_", so the whole funnel (import -> slice start -> slice success ->
-// print start) can be correlated on the PostHog side.
+// "lab_" and project_id / export_id are both present and non-empty, so the
+// funnel (import -> slice start -> slice success) can be correlated on the
+// PostHog side.
 
 namespace {
 using Slic3r::SnapLog::v1::SinkPostHog;    // SNAP_LOG_* macro arguments resolve at the call site
@@ -23468,25 +23467,6 @@ std::string lab_nozzle_size()
     } catch (...) {
         return {};
     }
-}
-
-// Filament material(s) of the current filament presets, comma separated.
-std::string lab_material()
-{
-    try {
-        return telemetry_filament_types();
-    } catch (...) {
-        return {};
-    }
-}
-
-// Estimated normal print time in seconds from a slice result, empty when not sliced yet.
-std::string lab_estimated_print_time(const GCodeProcessorResult* result)
-{
-    if (result == nullptr)
-        return {};
-    const float seconds = result->print_statistics.modes[static_cast<size_t>(PrintEstimatedStatistics::ETimeMode::Normal)].time;
-    return SnapTelemetry::number(seconds, 1);
 }
 } // namespace
 
@@ -23544,26 +23524,6 @@ void Plater::log_slice_success_from_lab(long long duration_ms) const
             {"duration_ms", std::to_string(duration_ms)},
         },
         "slice succeeded for a Lab model");
-}
-
-void Plater::log_print_start_from_lab() const
-{
-    if (!is_lab_model(p->model))
-        return;
-
-    const GCodeProcessorResult* result = nullptr;
-    PartPlate* plate = p->partplate_list.get_curr_plate();
-    if (plate != nullptr)
-        result = plate->get_slice_result();
-
-    SNAP_LOG_INFO(SinkPostHog, SnapEvent::LabPrintStart,
-        {
-            {"project_id", p->model.space_info.project_id},
-            {"export_id", p->model.space_info.export_id},
-            {"material", lab_material()},
-            {"estimated_print_time", lab_estimated_print_time(result)},
-        },
-        "print started for a Lab model");
 }
 
 bool Plater::is_export_gcode_scheduled() const

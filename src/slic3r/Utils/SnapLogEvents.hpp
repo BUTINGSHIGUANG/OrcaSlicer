@@ -20,7 +20,6 @@ inline namespace v1 {
     X(FlutterRunResult, "flutter_run_result")                                                                                                       \
     X(GcodeExportResult, "gcode_export_result")                                                                                                     \
     X(LabModelImport, "orca_model_import_from_lab")                                                                                                 \
-    X(LabPrintStart, "orca_print_start")                                                                                                            \
     X(LabSliceStart, "orca_slice_start")                                                                                                            \
     X(LabSliceSuccess, "orca_slice_success")                                                                                                        \
     X(MqttClientCreate, "mqtt_client_create")                                                                                                       \

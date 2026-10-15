@@ -41,23 +41,22 @@ TEST_CASE("SnapEvent registry maps every enum to a unique stable name", "[snaplo
     REQUIRE(snap_event_name(SnapEvent::AppLaunch) == "app_launch");
     REQUIRE(snap_event_name(SnapEvent::SliceFailed) == "slice_failed");
     REQUIRE(snap_event_name(SnapEvent::LabModelImport) == "orca_model_import_from_lab");
-    REQUIRE(snap_event_name(SnapEvent::LabPrintStart) == "orca_print_start");
     REQUIRE(snap_event_name(SnapEvent::LabSliceStart) == "orca_slice_start");
     REQUIRE(snap_event_name(SnapEvent::LabSliceSuccess) == "orca_slice_success");
     REQUIRE(snap_event_from_name("calibration_result") == SnapEvent::CalibrationResult);
     REQUIRE(snap_event_from_name("orca_model_import_from_lab") == SnapEvent::LabModelImport);
     REQUIRE_FALSE(snap_event_from_name("not_a_snap_event").has_value());
 
-    const std::array<SnapEvent, 27> events = {
+    const std::array<SnapEvent, 26> events = {
         SnapEvent::AppLaunch,           SnapEvent::AppSessionEnd,           SnapEvent::CalibrationResult,
         SnapEvent::DeviceConnectAttempt, SnapEvent::DeviceDisconnect,       SnapEvent::DeviceDiscoveryStart,
         SnapEvent::DeviceEngineSet,      SnapEvent::FileImportResult,       SnapEvent::FirmwareUpgradeResult,
         SnapEvent::FlutterRunResult,     SnapEvent::GcodeExportResult,      SnapEvent::LabModelImport,
-        SnapEvent::LabPrintStart,        SnapEvent::LabSliceStart,          SnapEvent::LabSliceSuccess,
-        SnapEvent::MqttClientCreate,     SnapEvent::MqttClientCreateFailed, SnapEvent::MqttConnectAttempt,
-        SnapEvent::MqttConnectFailure,   SnapEvent::MqttConnectResult,      SnapEvent::MqttSubscribeResult,
-        SnapEvent::PrintJobSendResult,   SnapEvent::PrivacyConsentGranted,  SnapEvent::ProjectSaveResult,
-        SnapEvent::SliceCompleted,       SnapEvent::SliceFailed,            SnapEvent::SliceStart
+        SnapEvent::LabSliceStart,        SnapEvent::LabSliceSuccess,        SnapEvent::MqttClientCreate,
+        SnapEvent::MqttClientCreateFailed, SnapEvent::MqttConnectAttempt,   SnapEvent::MqttConnectFailure,
+        SnapEvent::MqttConnectResult,    SnapEvent::MqttSubscribeResult,    SnapEvent::PrintJobSendResult,
+        SnapEvent::PrivacyConsentGranted, SnapEvent::ProjectSaveResult,     SnapEvent::SliceCompleted,
+        SnapEvent::SliceFailed,          SnapEvent::SliceStart
     };
 
     std::set<std::string_view> names;
