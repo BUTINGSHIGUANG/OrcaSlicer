@@ -224,7 +224,6 @@ static void report_file_import_result(const std::vector<fs::path>& input_files, 
 static std::string telemetry_printer_model();
 static size_t     telemetry_filament_count();
 
-// True when the 3mf extendInfo.source starts with "lab_" (definition at the bottom of this file).
 static bool is_lab_model(const Slic3r::Model& model);
 
 static unsigned telemetry_result_sinks(bool success)
@@ -23408,14 +23407,11 @@ void Plater::set_project_filename(const wxString& filename)
 }
 
 // --- Snapmaker Lab funnel analytics (PostHog) ----------------------------------
-// A model counts as a Lab model when extendInfo.source starts with "lab_" and
-// project_id / export_id are non-empty.
 
 namespace {
-using Slic3r::SnapLog::v1::SinkPostHog;    // SNAP_LOG_* macro arguments resolve at the call site
+using Slic3r::SnapLog::v1::SinkPostHog;
 using Slic3r::SnapLog::v1::SnapEvent;
 
-// String field of space_info's "extendInfo" JSON object, empty when absent.
 std::string lab_extend_info_value(const Model& model, const char* key)
 {
     const std::string& raw = model.space_info.extend_info;
@@ -23433,7 +23429,6 @@ std::string lab_extend_info_value(const Model& model, const char* key)
 
 std::string lab_generate_source(const Model& model) { return lab_extend_info_value(model, "source"); }
 
-// Nozzle diameter(s) of the current printer preset, comma separated.
 std::string lab_nozzle_size()
 {
     try {
@@ -23453,7 +23448,6 @@ std::string lab_nozzle_size()
 }
 } // namespace
 
-// Defined outside the anonymous namespace to match the forward declaration near the top.
 bool is_lab_model(const Model& model)
 {
     if (!boost::algorithm::starts_with(lab_extend_info_value(model, "source"), "lab_"))
