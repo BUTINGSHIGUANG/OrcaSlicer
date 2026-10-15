@@ -23440,8 +23440,8 @@ std::string lab_extend_info_value(const Model& model, const char* key)
         const nlohmann::json j = nlohmann::json::parse(raw);
         if (j.is_object() && j.contains(key) && j[key].is_string())
             return j[key].get<std::string>();
-    } catch (const nlohmann::json::exception&) {
-        // malformed extendInfo — treat as no Lab info
+    } catch (const nlohmann::json::exception& e) {
+        BOOST_LOG_TRIVIAL(info) << "Lab analytics: failed to parse 3mf space_info extendInfo, model is not treated as a Lab model: " << e.what();
     }
     return {};
 }
