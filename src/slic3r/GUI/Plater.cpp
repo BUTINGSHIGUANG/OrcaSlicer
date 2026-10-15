@@ -224,9 +224,7 @@ static void report_file_import_result(const std::vector<fs::path>& input_files, 
 static std::string telemetry_printer_model();
 static size_t     telemetry_filament_count();
 
-// Lab funnel guard: defined near the other Lab analytics helpers at the bottom of this file.
-// True only for models whose 3mf space_info extendInfo.source starts with "lab_" AND whose
-// project_id / export_id are both present and non-empty.
+// True when the 3mf extendInfo.source starts with "lab_" (definition at the bottom of this file).
 static bool is_lab_model(const Slic3r::Model& model);
 
 static unsigned telemetry_result_sinks(bool success)
@@ -12121,11 +12119,7 @@ std::vector<size_t> Plater::priv::load_files(const std::vector<fs::path>& input_
                         this->model.plates_custom_gcodes = model.plates_custom_gcodes;
                         this->model.design_info = model.design_info;
                         this->model.model_info = model.model_info;
-                        // space info (project_id / export_id / extendInfo) carried by the project for Lab funnel reporting
                         this->model.space_info = model.space_info;
-                        // Lab funnel: the model is fully imported now, so its 3mf metadata is
-                        // available — report the import event for Lab models (extendInfo.source
-                        // starts with "lab_"; is_lab_model() checks it inside the logger).
                         if (is_lab_model(this->model))
                             q->log_model_import_from_lab();
                     }
@@ -13301,7 +13295,6 @@ void Plater::priv::reset(bool apply_presets_change)
     //BBS
     model.calib_pa_pattern.reset();
     model.plates_custom_gcodes.clear();
-    // space info belongs to the closed project; clear it so its ids never leak into the next one
     model.space_info.clear();
 
     // BBS
@@ -15315,8 +15308,6 @@ void Plater::priv::on_slicing_began()
         m_slice_next_trigger = "auto";
         m_slice_session_active = true;
         m_slice_result_reported = false;
-        // Lab funnel: report slice start once per slice session, after timing reset,
-        // so a Lab model's first slice of the session is counted exactly once.
         q->log_slice_start_from_lab();
     }
     m_slice_timing_active = true;
@@ -15593,7 +15584,6 @@ void Plater::priv::on_process_completed(SlicingProcessCompletedEvent &evt)
             report_slice_telemetry("slice_cancelled", false, true, "cancelled");
         else if (evt.success()) {
             report_slice_telemetry("slice_completed", true, false, "");
-            // Lab funnel: report the slice duration measured for this session.
             q->log_slice_success_from_lab(std::stoll(m_slice_duration_ms.empty() ? "0" : m_slice_duration_ms));
         }
         else
@@ -23418,19 +23408,14 @@ void Plater::set_project_filename(const wxString& filename)
 }
 
 // --- Snapmaker Lab funnel analytics (PostHog) ----------------------------------
-//
-// Lab models are generated on Snapmaker Lab and saved as 3mf whose
-// Metadata/space_info.json carries project_id / export_id / extendInfo.source.
-// A model counts as a Lab model only when extendInfo.source starts with
-// "lab_" and project_id / export_id are both present and non-empty, so the
-// funnel (import -> slice start -> slice success) can be correlated on the
-// PostHog side.
+// A model counts as a Lab model when extendInfo.source starts with "lab_" and
+// project_id / export_id are non-empty.
 
 namespace {
 using Slic3r::SnapLog::v1::SinkPostHog;    // SNAP_LOG_* macro arguments resolve at the call site
 using Slic3r::SnapLog::v1::SnapEvent;
 
-// Read a string field from space_info.json's "extendInfo" JSON object (raw text).
+// String field of space_info's "extendInfo" JSON object, empty when absent.
 std::string lab_extend_info_value(const Model& model, const char* key)
 {
     const std::string& raw = model.space_info.extend_info;
@@ -23446,11 +23431,9 @@ std::string lab_extend_info_value(const Model& model, const char* key)
     return {};
 }
 
-// Which Lab generator produced the model. Reported under the protocol name
-// "generate_source", which maps to "extendInfo.source" inside the 3mf.
 std::string lab_generate_source(const Model& model) { return lab_extend_info_value(model, "source"); }
 
-// Nozzle diameter(s) of the current printer preset, comma separated (multi-head setups).
+// Nozzle diameter(s) of the current printer preset, comma separated.
 std::string lab_nozzle_size()
 {
     try {
@@ -23470,15 +23453,9 @@ std::string lab_nozzle_size()
 }
 } // namespace
 
-// True only when the model comes from a Lab generator (extendInfo.source starts with "lab_").
-// Defined here (outside the anonymous namespace) to match the file-scope forward declaration
-// near the top, so load_files() can call it before this point.
+// Defined outside the anonymous namespace to match the forward declaration near the top.
 bool is_lab_model(const Model& model)
 {
-    // A model counts as a Lab model only when all of the following hold in its
-    // Metadata/space_info.json: extendInfo.source starts with "lab_", and both
-    // project_id and export_id are present and non-empty (they are the keys the
-    // funnel events rely on for correlation).
     if (!boost::algorithm::starts_with(lab_extend_info_value(model, "source"), "lab_"))
         return false;
     return !model.space_info.project_id.empty() && !model.space_info.export_id.empty();

@@ -672,9 +672,7 @@ public:
     wxString get_project_filename(const wxString& extension = wxEmptyString) const;
     wxString get_export_gcode_filename(const wxString& extension = wxEmptyString, bool only_filename = false, bool export_all = false) const;
     void set_project_filename(const wxString& filename);
-    // Snapmaker Lab funnel analytics (PostHog). Reported only for models whose 3mf
-    // space_info extendInfo.source starts with "lab_" with non-empty project_id and
-    // export_id (i.e. generated on Snapmaker Lab).
+    // Lab funnel events (PostHog), reported only for Lab models.
     void log_model_import_from_lab() const;
     void log_slice_start_from_lab() const;
     void log_slice_success_from_lab(long long duration_ms) const;
