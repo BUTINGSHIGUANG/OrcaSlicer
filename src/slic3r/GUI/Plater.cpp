@@ -23429,6 +23429,14 @@ std::string lab_extend_info_value(const Model& model, const char* key)
 
 std::string lab_generate_source(const Model& model) { return lab_extend_info_value(model, "source"); }
 
+std::string lab_estimated_print_time(const GCodeProcessorResult* result)
+{
+    if (result == nullptr)
+        return {};
+    const float seconds = result->print_statistics.modes[static_cast<size_t>(PrintEstimatedStatistics::ETimeMode::Normal)].time;
+    return SnapTelemetry::number(seconds, 1);
+}
+
 std::string lab_nozzle_size()
 {
     try {
@@ -23488,11 +23496,18 @@ void Plater::log_slice_success_from_lab(long long duration_ms) const
     if (!is_lab_model(p->model))
         return;
 
+    const GCodeProcessorResult* result = nullptr;
+    PartPlate* plate = p->partplate_list.get_curr_plate();
+    if (plate != nullptr)
+        result = plate->get_slice_result();
+
     SNAP_LOG_INFO(SinkPostHog, SnapEvent::LabSliceSuccess,
         {
             {"project_id", p->model.space_info.project_id},
             {"export_id", p->model.space_info.export_id},
             {"duration_ms", std::to_string(duration_ms)},
+            {"material", telemetry_filament_types()},
+            {"estimated_print_time", lab_estimated_print_time(result)},
         },
         "slice succeeded for a Lab model");
 }
