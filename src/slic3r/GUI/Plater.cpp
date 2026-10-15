@@ -23443,13 +23443,46 @@ std::string lab_nozzle_size()
         PresetBundle* bundle = wxGetApp().preset_bundle;
         if (bundle == nullptr)
             return {};
+        // nozzle_diameter of the loaded 3mf (extruder slots, in order), e.g. "0.40,0.40,0.60"
         const auto* opt = bundle->printers.get_edited_preset().config.option<ConfigOptionFloats>("nozzle_diameter");
         if (opt == nullptr || opt->values.empty())
             return {};
+        std::string out;
+        for (double v : opt->values) {
+            if (!out.empty())
+                out += ",";
+            out += SnapTelemetry::number(v, 2);
+        }
+        return out;
+    } catch (...) {
+        return {};
+    }
+}
+
+std::string lab_material()
+{
+    try {
+        PresetBundle* bundle = wxGetApp().preset_bundle;
+        if (bundle == nullptr)
+            return {};
+        // filament type of every slot shown on the left panel, in slot order
         std::vector<std::string> parts;
-        for (double v : opt->values)
-            parts.push_back(SnapTelemetry::number(v, 2));
-        return SnapTelemetry::unique_csv(std::move(parts));
+        for (const std::string& preset_name : bundle->filament_presets) {
+            const Preset* preset = bundle->filaments.find_preset(preset_name);
+            if (preset == nullptr)
+                continue;
+            const auto* opt = preset->config.option<ConfigOptionStrings>("filament_type");
+            if (opt == nullptr || opt->values.empty())
+                continue;
+            parts.push_back(SnapTelemetry::filament_type(opt->values.front()));
+        }
+        std::string out;
+        for (const std::string& p : parts) {
+            if (!out.empty())
+                out += ",";
+            out += p;
+        }
+        return out;
     } catch (...) {
         return {};
     }
@@ -23506,7 +23539,7 @@ void Plater::log_slice_success_from_lab(long long duration_ms) const
             {"project_id", p->model.space_info.project_id},
             {"export_id", p->model.space_info.export_id},
             {"duration_ms", std::to_string(duration_ms)},
-            {"material", telemetry_filament_types()},
+            {"material", lab_material()},
             {"estimated_print_time", lab_estimated_print_time(result)},
         },
         "slice succeeded for a Lab model");
