@@ -2,6 +2,7 @@
 #include "AABBTreeLines.hpp"
 #include "BridgeDetector.hpp"
 #include "ClipperUtils.hpp"
+#include "ClipperZUtils.hpp"
 #include "ExtrusionEntity.hpp"
 #include "ExtrusionEntityCollection.hpp"
 #include "Feature/FuzzySkin/FuzzySkin.hpp"
@@ -267,13 +268,12 @@ static ExtrusionEntityCollection traverse_loops(const PerimeterGenerator &perime
     return out;
 }
 
-static ClipperLib_Z::Paths clip_extrusion(const ClipperLib_Z::Path& subject, const ClipperLib_Z::Paths& clip, ClipperLib_Z::ClipType clipType)
+static ClipperZUtils::ZPaths clip_extrusion(const ClipperZUtils::ZPath& subject, const ClipperZUtils::ZPaths& clip, ClipType clipType)
 {
-    ClipperLib_Z::Clipper clipper;
-    clipper.ZFillFunction([](const ClipperLib_Z::IntPoint& e1bot, const ClipperLib_Z::IntPoint& e1top, const ClipperLib_Z::IntPoint& e2bot,
-        const ClipperLib_Z::IntPoint& e2top, ClipperLib_Z::IntPoint& pt) {
-            ClipperLib_Z::IntPoint start = e1bot;
-            ClipperLib_Z::IntPoint end = e1top;
+    auto zfill = [](const ClipperZUtils::ZPoint& e1bot, const ClipperZUtils::ZPoint& e1top, const ClipperZUtils::ZPoint& e2bot,
+        const ClipperZUtils::ZPoint& e2top, ClipperZUtils::ZPoint& pt) {
+            ClipperZUtils::ZPoint start = e1bot;
+            ClipperZUtils::ZPoint end = e1top;
 
             if (start.z() <= 0 && end.z() <= 0) {
                 start = e2bot;
@@ -288,23 +288,15 @@ static ClipperLib_Z::Paths clip_extrusion(const ClipperLib_Z::Path& subject, con
             double t = std::sqrt(dist_sqr / length_sqr);
 
             pt.z() = start.z() + coord_t((end.z() - start.z()) * t);
-        });
+        };
 
-    clipper.AddPath(subject, ClipperLib_Z::ptSubject, false);
-    clipper.AddPaths(clip, ClipperLib_Z::ptClip, true);
-
-    ClipperLib_Z::Paths    clipped_paths;
-    {
-        ClipperLib_Z::PolyTree clipped_polytree;
-        clipper.Execute(clipType, clipped_polytree, ClipperLib_Z::pftNonZero, ClipperLib_Z::pftNonZero);
-        ClipperLib_Z::PolyTreeToPaths(std::move(clipped_polytree), clipped_paths);
-    }
+    ClipperZUtils::ZPaths clipped_paths = ClipperZUtils::clip_zpaths(clipType, ClipperZUtils::ZPaths{ subject }, true, clip, zfill);
 
     // Clipped path could contain vertices from the clip with a Z coordinate equal to zero.
     // For those vertices, we must assign value based on the subject.
     // This happens only in sporadic cases.
-    for (ClipperLib_Z::Path& path : clipped_paths)
-        for (ClipperLib_Z::IntPoint& c_pt : path)
+    for (ClipperZUtils::ZPath& path : clipped_paths)
+        for (ClipperZUtils::ZPoint& c_pt : path)
             if (c_pt.z() == 0) {
                 // Now we must find the corresponding line on with this point is located and compute line width (Z coordinate).
                 if (subject.size() <= 2)
@@ -337,8 +329,8 @@ static ClipperLib_Z::Paths clip_extrusion(const ClipperLib_Z::Path& subject, con
             }
 
     assert([&clipped_paths = std::as_const(clipped_paths)]() -> bool {
-        for (const ClipperLib_Z::Path& path : clipped_paths)
-            for (const ClipperLib_Z::IntPoint& pt : path)
+        for (const ClipperZUtils::ZPath& path : clipped_paths)
+            for (const ClipperZUtils::ZPoint& pt : path)
                 if (pt.z() <= 0)
                     return false;
         return true;
@@ -376,7 +368,7 @@ static ExtrusionEntityCollection traverse_extrusions(const PerimeterGenerator& p
         ExtrusionPaths paths;
         // detect overhanging/bridging perimeters
         if (perimeter_generator.config->detect_overhang_wall && perimeter_generator.layer_id > perimeter_generator.object_config->raft_layers) {
-            ClipperLib_Z::Path extrusion_path;
+            ClipperZUtils::ZPath extrusion_path;
             extrusion_path.reserve(extrusion->size());
             BoundingBox extrusion_path_bbox;
             for (const Arachne::ExtrusionJunction &ej : extrusion->junctions) {
@@ -384,7 +376,7 @@ static ExtrusionEntityCollection traverse_extrusions(const PerimeterGenerator& p
                 extrusion_path_bbox.merge(Point(ej.p.x(), ej.p.y()));
             }
 
-            ClipperLib_Z::Paths lower_slices_paths;
+            ClipperZUtils::ZPaths lower_slices_paths;
             {
                 lower_slices_paths.reserve(perimeter_generator.lower_slices_polygons().size());
                 Points clipped;
@@ -394,7 +386,7 @@ static ExtrusionEntityCollection traverse_extrusions(const PerimeterGenerator& p
                     ClipperUtils::clip_clipper_polygon_with_subject_bbox(poly.points, extrusion_path_bbox, clipped);
                     if (!clipped.empty()) {
                         lower_slices_paths.emplace_back();
-                        ClipperLib_Z::Path &out = lower_slices_paths.back();
+                        ClipperZUtils::ZPath &out = lower_slices_paths.back();
                         out.reserve(clipped.size());
                         for (const Point &pt : clipped)
                           out.emplace_back(pt.x(), pt.y(), 0);
@@ -403,7 +395,7 @@ static ExtrusionEntityCollection traverse_extrusions(const PerimeterGenerator& p
             }
 
             // get non-overhang paths by intersecting this loop with the grown lower slices
-            extrusion_paths_append(paths, clip_extrusion(extrusion_path, lower_slices_paths, ClipperLib_Z::ctIntersection), role,
+            extrusion_paths_append(paths, clip_extrusion(extrusion_path, lower_slices_paths, ctIntersection), role,
                                    is_external ? perimeter_generator.ext_perimeter_flow : perimeter_generator.perimeter_flow);
 
             // Always reverse extrusion if use fuzzy skin: https://github.com/SoftFever/OrcaSlicer/pull/2413#issuecomment-1769735357
@@ -444,7 +436,7 @@ static ExtrusionEntityCollection traverse_extrusions(const PerimeterGenerator& p
             // get overhang paths by checking what parts of this loop fall
             // outside the grown lower slices (thus where the distance between
             // the loop centerline and original lower slices is >= half nozzle diameter
-            extrusion_paths_append(paths, clip_extrusion(extrusion_path, lower_slices_paths, ClipperLib_Z::ctDifference), erOverhangPerimeter,
+            extrusion_paths_append(paths, clip_extrusion(extrusion_path, lower_slices_paths, ctDifference), erOverhangPerimeter,
                 perimeter_generator.overhang_flow);
 
             // Reapply the nearest point search for starting point.
@@ -857,7 +849,7 @@ ExtrusionPaths sort_extra_perimeters(const ExtrusionPaths& extra_perims, int ind
     return filtered;
 }
 
-#define EXTRA_PERIMETER_OFFSET_PARAMETERS ClipperLib::jtSquare, 0.
+#define EXTRA_PERIMETER_OFFSET_PARAMETERS jtSquare, 0.
 // #define EXTRA_PERIM_DEBUG_FILES
 // Function will generate extra perimeters clipped over nonbridgeable areas of the provided surface and returns both the new perimeters and
 // Polygons filled by those clipped perimeters
@@ -1847,14 +1839,14 @@ void PerimeterGenerator::process_no_bridge(Surfaces& all_surfaces, coord_t perim
                                     bool first = true;
                                     unbridgeable = diff_ex(unbridgeable, offset_ex(bridges_temp, ext_perimeter_width));
                                     while (offset_to_do > ext_perimeter_width * 1.5) {
-                                        unbridgeable = offset2_ex(unbridgeable, -ext_perimeter_width / 4, ext_perimeter_width * 2.25, ClipperLib::jtSquare);
+                                        unbridgeable = offset2_ex(unbridgeable, -ext_perimeter_width / 4, ext_perimeter_width * 2.25, jtSquare);
                                         bridges_temp = diff_ex(bridges_temp, unbridgeable);
-                                        bridges_temp = offset_ex(bridges_temp, ext_perimeter_width, ClipperLib::jtMiter, 6.);
+                                        bridges_temp = offset_ex(bridges_temp, ext_perimeter_width, jtMiter, 6.);
                                         unbridgeable = diff_ex(unbridgeable, offset_ex(bridges_temp, ext_perimeter_width));
                                         offset_to_do -= ext_perimeter_width;
                                         first = false;
                                     }
-                                    unbridgeable = offset_ex(unbridgeable, ext_perimeter_width + offset_to_do, ClipperLib::jtSquare);
+                                    unbridgeable = offset_ex(unbridgeable, ext_perimeter_width + offset_to_do, jtSquare);
                                     bridges_temp = diff_ex(bridges_temp, unbridgeable);
                                     unsupported_filtered = offset_ex(bridges_temp, offset_to_do);
                                     unsupported_filtered = intersection_ex(unsupported_filtered, reference);

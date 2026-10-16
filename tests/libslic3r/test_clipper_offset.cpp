@@ -23,7 +23,7 @@ SCENARIO("Constant offset", "[ClipperUtils]") {
 		WHEN("Slic3r::offset()") {
 			for (double miter : { 2.0, 1.5, 1.2 }) {
 				DYNAMIC_SECTION("plus 1mm, miter " << miter << "x") {
-					output = Slic3r::offset(box20mm, 1. * s, ClipperLib::jtMiter, miter);
+					output = Slic3r::offset(box20mm, 1. * s, jtMiter, miter);
 #ifdef TESTS_EXPORT_SVGS
 					{
 						SVG svg(debug_out_path("constant_offset_box20mm_plus1mm_miter%lf.svg", miter).c_str(), get_extents(output));
@@ -37,7 +37,7 @@ SCENARIO("Constant offset", "[ClipperUtils]") {
 					}
 				}
 				DYNAMIC_SECTION("minus 1mm, miter " << miter << "x") {
-					output = Slic3r::offset(box20mm, - 1. * s, ClipperLib::jtMiter, miter);
+					output = Slic3r::offset(box20mm, - 1. * s, jtMiter, miter);
 #ifdef TESTS_EXPORT_SVGS
 					{
 						SVG svg(debug_out_path("constant_offset_box20mm_minus1mm_miter%lf.svg", miter).c_str(), get_extents(output));
@@ -97,7 +97,7 @@ SCENARIO("Constant offset", "[ClipperUtils]") {
 			for (double miter : { 2.0, 1.5, 1.2 }) {
 				DYNAMIC_SECTION("miter " << miter << "x") {
 					WHEN("plus 1mm") {
-						output = Slic3r::offset_ex(box20mm, 1. * s, ClipperLib::jtMiter, miter);
+						output = Slic3r::offset_ex(box20mm, 1. * s, jtMiter, miter);
 #ifdef TESTS_EXPORT_SVGS
 						{
 							SVG svg(debug_out_path("constant_offset_box20mm_10mm_hole_plus1mm_miter%lf.svg", miter).c_str(), get_extents(output));
@@ -111,7 +111,7 @@ SCENARIO("Constant offset", "[ClipperUtils]") {
 						}
 					}
 					WHEN("minus 1mm") {
-						output = Slic3r::offset_ex(box20mm, - 1. * s, ClipperLib::jtMiter, miter);
+						output = Slic3r::offset_ex(box20mm, - 1. * s, jtMiter, miter);
 #ifdef TESTS_EXPORT_SVGS
 						{
 							SVG svg(debug_out_path("constant_offset_box20mm_10mm_hole_minus1mm_miter%lf.svg", miter).c_str(), get_extents(output));
@@ -177,7 +177,7 @@ SCENARIO("Constant offset", "[ClipperUtils]") {
 		SECTION("Slic3r::offset()") {
 			for (double miter : { 2.0, 1.5, 1.2 }) {
 				DYNAMIC_SECTION("Outer offset 1mm, miter " << miter << "x") {
-					output = Slic3r::offset(triangle20mm, offset * s, ClipperLib::jtMiter, 2.0);
+					output = Slic3r::offset(triangle20mm, offset * s, jtMiter, 2.0);
 #ifdef TESTS_EXPORT_SVGS
 					{
 						SVG svg(debug_out_path("constant_offset_triangle20mm_plus1mm_miter%lf.svg", miter).c_str(), get_extents(output));
