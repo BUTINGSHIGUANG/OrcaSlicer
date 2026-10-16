@@ -580,7 +580,6 @@ target_link_libraries(libslic3r
         boost_libs
         cereal::cereal
         Clipper2
-        draco::draco
         eigen
         glu-libtess
         JPEG::JPEG
