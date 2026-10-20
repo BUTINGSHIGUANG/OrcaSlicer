@@ -76,6 +76,10 @@ public:
         StateWithTimeStamp() : state(INVALID), timestamp(0) {}
         State       state;
         TimeStamp   timestamp;
+        // OrcaBench: when the step last ran, which is not always the current pass, since a step only re-runs
+        // after being invalidated. Compare against a time you take before the pass.
+        std::chrono::steady_clock::time_point started_at {};
+        std::chrono::steady_clock::time_point done_at    {};
     };
 
     struct Warning
@@ -173,6 +177,9 @@ public:
         PrintStateBase::StateWithWarnings &state = m_state[step];
         state.state = STARTED;
         state.timestamp = ++ g_last_timestamp;
+        // OrcaBench: record when the step last ran; set_done() clears nothing here, so a span
+        // never mixes two runs (invalidation leaves both timestamps describing the last run).
+        state.started_at = std::chrono::steady_clock::now();
         state.mark_warnings_non_current();
         m_step_active = static_cast<int>(step);
         return true;
@@ -193,6 +200,7 @@ public:
         PrintStateBase::StateWithWarnings &state = m_state[step];
         state.state = DONE;
         state.timestamp = ++ g_last_timestamp;
+        state.done_at = std::chrono::steady_clock::now();
         m_step_active = -1;
         // Remove all non-current warnings.
     	auto it = std::remove_if(state.warnings.begin(), state.warnings.end(), [](const auto &w) { return ! w.current; });

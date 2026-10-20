@@ -33,6 +33,9 @@
 // BBS: for segment
 #include "MeshBoolean.hpp"
 #include "Format/3mf.hpp"
+#ifdef ORCA_BENCH_DRACO
+    #include "Format/DRC.hpp"
+#endif // ORCA_BENCH_DRACO
 
 // Transtltion
 #include "I18N.hpp"
@@ -298,6 +301,11 @@ Model Model::read_from_file(const std::string&                                  
     }
     else if (boost::algorithm::iends_with(input_file, ".svg"))
         result = load_svg(input_file.c_str(), &model, message);
+#ifdef ORCA_BENCH_DRACO
+    // OrcaBench: Draco-compressed benchmark fixtures.
+    else if (boost::algorithm::iends_with(input_file, ".drc"))
+        result = load_drc(input_file.c_str(), &model);
+#endif // ORCA_BENCH_DRACO
     //BBS: remove the old .amf.xml files
     //else if (boost::algorithm::iends_with(input_file, ".amf") || boost::algorithm::iends_with(input_file, ".amf.xml"))
     else if (boost::algorithm::iends_with(input_file, ".amf"))

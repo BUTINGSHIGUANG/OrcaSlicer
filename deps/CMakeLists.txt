@@ -313,6 +313,14 @@ include(CGAL/CGAL.cmake)
 include(NLopt/NLopt.cmake)
 include(libnoise/libnoise.cmake)
 
+# OrcaBench: Draco mesh codec for the .drc handy benchmark fixtures.
+# Only built when the benchmark framework is requested, to keep ordinary
+# dependency builds unchanged.
+option(ORCA_BENCHMARKS "Build the slicing benchmark framework" OFF)
+if (ORCA_BENCHMARKS)
+    include(Draco/Draco.cmake)
+endif()
+
 
 set(OPENSSL_PKG "")
 if(NOT OPENSSL_FOUND)
@@ -392,6 +400,11 @@ set(_dep_list
     ${EXPAT_PKG}
     dep_libnoise
     )
+
+# OrcaBench: only pull Draco into the aggregate deps target when requested.
+if (ORCA_BENCHMARKS AND TARGET dep_Draco)
+    list(APPEND _dep_list dep_Draco)
+endif()
 
 if (MSVC)
     # Experimental

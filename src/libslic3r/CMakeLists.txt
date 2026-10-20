@@ -476,6 +476,15 @@ if (APPLE)
         )
 endif ()
 
+# OrcaBench: Draco .drc model loading, compiled only when the benchmark
+# framework is on (it needs the draco headers from the benchmark deps).
+if (ORCA_BENCHMARKS)
+    list(APPEND lisbslic3r_sources
+            Format/DRC.cpp
+            Format/DRC.hpp
+        )
+endif ()
+
 add_library(libslic3r STATIC ${lisbslic3r_sources} 
     ${OpenVDBUtils_SOURCES})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${lisbslic3r_sources})
@@ -537,6 +546,14 @@ target_link_libraries(libslic3r PUBLIC nlohmann_json)
 
 find_package(JPEG REQUIRED)
 
+# OrcaBench: Draco is only found (and DRC.cpp's includes resolved) when the
+# benchmark framework's dependency build produced it. Without ORCA_BENCHMARKS
+# the DRC object still compiles but the find stays skipped; see the guard on
+# the source below for the fully-off path.
+if (ORCA_BENCHMARKS)
+    find_package(Draco REQUIRED)
+endif()
+
 set(OCCT_LIBS
     TKXDESTEP
     TKSTEP
@@ -595,6 +612,12 @@ target_link_libraries(libslic3r
         TBB::tbbmalloc
         ZLIB::ZLIB
     )
+
+# OrcaBench: link draco only when the benchmark build provided it.
+if (ORCA_BENCHMARKS)
+    target_link_libraries(libslic3r PRIVATE draco::draco)
+    target_compile_definitions(libslic3r PRIVATE ORCA_BENCH_DRACO)
+endif ()
 
 if (WIN32)
     target_link_libraries(libslic3r PRIVATE OpenSSL::Crypto crypt32 ws2_32)

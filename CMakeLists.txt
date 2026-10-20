@@ -90,6 +90,20 @@ if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
     add_definitions("-DGIT_COMMIT_HASH=\"${GIT_COMMIT_HASH}\"")
 endif()
 
+# OrcaBench: a build-time refresh of the commit hash into a generated header, so a new
+# commit is picked up without a reconfigure. orcabench_core depends on this target.
+set(ORCABENCH_GIT_COMMIT_HASH_DIR "${CMAKE_BINARY_DIR}/orcabench_git_commit_hash")
+if (ORCA_BENCHMARKS)
+    add_custom_target(git_commit_hash_header
+        BYPRODUCTS "${ORCABENCH_GIT_COMMIT_HASH_DIR}/git_commit_hash.h"
+        COMMAND ${CMAKE_COMMAND}
+            "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}"
+            "-DOUT_FILE=${ORCABENCH_GIT_COMMIT_HASH_DIR}/git_commit_hash.h"
+            "-DGLOBBED_DIRS=benchmarks/kinds"
+            -P "${CMAKE_SOURCE_DIR}/cmake/modules/GitCommitHash.cmake"
+        COMMENT "Resolving the git commit hash")
+endif()
+
 if(DEFINED ENV{SLIC3R_STATIC})
         set(SLIC3R_STATIC_INITIAL $ENV{SLIC3R_STATIC})
 else()
@@ -166,6 +180,9 @@ endif ()
 option(SLIC3R_BUILD_SANDBOXES   "Build development sandboxes" OFF)
 option(BUILD_TESTS       "Build unit tests" OFF)
 option(ORCA_TOOLS       "Build Orca tools" OFF)
+# OrcaBench: the slicing benchmark framework (see benchmarks/README.md).
+# Off by default so ordinary builds are unchanged.
+option(ORCA_BENCHMARKS  "Build the slicing benchmark framework" OFF)
 
 if (IS_CROSS_COMPILE)
     message("Detected cross compilation setup. Tests and encoding checks will be forcedly disabled!")
@@ -917,6 +934,11 @@ endif()
 
 if(BUILD_TESTS)
     add_subdirectory(tests)
+endif()
+
+# OrcaBench: the slicing benchmark framework, built with ORCA_BENCHMARKS=ON.
+if(ORCA_BENCHMARKS)
+    add_subdirectory(benchmarks)
 endif()
 
 if(BUILD_TESTS)
